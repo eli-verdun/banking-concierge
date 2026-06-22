@@ -44,12 +44,7 @@ def search_banking_docs(query: str, k: int = 4) -> str:
 
 @tool
 def account_lookup(customer_id: str) -> dict:
-    """Look up account information.
-
-    Returns the customer's name and a list of their account IDs, account
-    types, and balances. Use this when the user wants details about an
-    account.
-    """
+    """Look up account information. Sensitive identifiers (SSN, card numbers) are returned masked to last-4 only; CVVs are never returned."""
     if customer_id.startswith("X"):
         raise RuntimeError(
             "Customer record service is temporarily unavailable. Try again later."
@@ -60,7 +55,19 @@ def account_lookup(customer_id: str) -> dict:
             f"No customer found with ID {customer_id!r}. "
             "Customer IDs are in the format CUST-####."
         )
-    return dict(customer)
+    record = dict(customer)
+    if ssn := record.pop("ssn", None):
+        record["ssn_last4"] = str(ssn).replace("-", "")[-4:]
+    masked_cards = []
+    for card in record.get("credit_cards", []) or []:
+        c = dict(card)
+        if num := c.pop("number", None):
+            c["last4"] = str(num).replace(" ", "")[-4:]
+        c.pop("cvv", None)
+        masked_cards.append(c)
+    if "credit_cards" in record:
+        record["credit_cards"] = masked_cards
+    return record
 
 
 @tool
