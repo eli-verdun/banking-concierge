@@ -79,4 +79,4 @@ def _build_graph():
     return builder.compile()
 
 
-graph = _build_graph()
+graph = _build_graph().with_config({"run_name": "banking_concierge"})
